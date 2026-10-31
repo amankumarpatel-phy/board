@@ -7,7 +7,7 @@
           <TextBlock Text="  SMARTBOARD" Foreground="#60A5FA" FontSize="19" FontWeight="Light" VerticalAlignment="Center"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Content="New" Click="New_Click"/><Button Content="Open" Click="Open_Click"/><Button Content="Save" Click="Save_Click"/><Button Content="Export PNG" Click="Export_Click"/>
+          <Button Content="New" Click="New_Click"/><Button Content="Open" Click="Open_Click"/><Button Content="Save" Click="Save_Click"/><Button Content="Open PDF" Click="OpenPdf_Click"/><Button Content="PDF ◀" Click="PreviousPdf_Click"/><Button Content="PDF ▶" Click="NextPdf_Click"/><TextBlock x:Name="PdfPageLabel" Text="No PDF" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="8,0"/><Button Content="Export PNG" Click="Export_Click"/>
         </StackPanel>
       </DockPanel>
     </Border>
