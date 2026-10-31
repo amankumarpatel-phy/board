@@ -24,7 +24,7 @@
         <Button Content="Undo" Click="Undo_Click"/><Button Content="Redo" Click="Redo_Click"/><Button Content="Clear Page" Click="Clear_Click"/><Button Content="Zoom −" Click="ZoomOut_Click"/><Slider x:Name="ZoomSlider" Width="110" Minimum="0.5" Maximum="2.5" Value="1" ValueChanged="Zoom_Changed" VerticalAlignment="Center"/><Button Content="Zoom +" Click="ZoomIn_Click"/><Button Content="100%" Click="ZoomReset_Click"/>
       </WrapPanel>
     </Border>
-    <Border DockPanel.Dock="Bottom" Background="#111D30" Padding="8">
+    <Border DockPanel.Dock="Left" Width="190" Margin="12,12,0,12" Background="#111D30" CornerRadius="8" Padding="6"><DockPanel><TextBlock DockPanel.Dock="Top" Text="PDF PAGES" Foreground="#CBD5E1" FontWeight="Bold" Margin="6"/><ListBox x:Name="PdfThumbnails" Background="#17253A" BorderThickness="0" SelectionChanged="PdfThumbnail_SelectionChanged"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4"><Image Source="{Binding}" Height="115" Stretch="Uniform"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox></DockPanel></Border><Border DockPanel.Dock="Bottom" Background="#111D30" Padding="8">
       <DockPanel>
         <StackPanel Orientation="Horizontal"><Button Content="＋ Add Page" Click="AddPage_Click"/><Button Content="← Previous" Click="Previous_Click"/><Button Content="Next →" Click="Next_Click"/></StackPanel>
         <TextBlock x:Name="PageLabel" Text="Page 1 of 1" Foreground="#CBD5E1" VerticalAlignment="Center" HorizontalAlignment="Right"/>
