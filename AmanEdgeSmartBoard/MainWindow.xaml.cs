@@ -23,7 +23,8 @@ public partial class MainWindow : Window
     private readonly Stack<StrokeCollection> _undo = new();
     private readonly Stack<StrokeCollection> _redo = new();
     private int _pageIndex;
-    private bool _loading;
+    // Suppress XAML SelectionChanged/ValueChanged callbacks until InitializeComponent has finished.
+    private bool _loading = true;
     private string _currentFile = "";
     private string _shapeTool = "Pen";
     private Point _shapeStart;
@@ -53,6 +54,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _loading = false;
         _pages.Add(new StrokeCollection());
         Board.Strokes = _pages[0];
         Board.LayoutTransform = _boardScale;
@@ -68,7 +70,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => StopCamera();
     }
 
-    private Color SelectedColor() => (ColourBox.SelectedItem as ComboBoxItem)?.Content?.ToString() switch
+    private Color SelectedColor() => (ColourBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() switch
     {
         "Black" => Colors.Black, "Red" => Colors.Red, "Blue" => Colors.DodgerBlue,
         "Green" => Colors.ForestGreen, "Yellow" => Colors.Gold, _ => Colors.White
@@ -76,6 +78,8 @@ public partial class MainWindow : Window
 
     private void SetPen()
     {
+        // XAML can raise selection events while controls are still being constructed.
+        if (Board == null || WidthSlider == null || ColourBox == null) return;
         Board.DefaultDrawingAttributes = new DrawingAttributes
         {
             Color = SelectedColor(), Width = WidthSlider.Value, Height = WidthSlider.Value,
@@ -501,8 +505,18 @@ public partial class MainWindow : Window
     private void Select_Click(object sender, RoutedEventArgs e) => Board.EditingMode = InkCanvasEditingMode.Select;
     private void StrokeEraser_Click(object sender, RoutedEventArgs e) => Board.EditingMode = InkCanvasEditingMode.EraseByStroke;
     private void PointEraser_Click(object sender, RoutedEventArgs e) => Board.EditingMode = InkCanvasEditingMode.EraseByPoint;
-    private void Colour_Changed(object sender, SelectionChangedEventArgs e) { if (!_loading && Board != null) SetPen(); }
-    private void Width_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) { if (WidthLabel != null) WidthLabel.Text = $"{WidthSlider.Value:0} px"; if (!_loading && Board != null && Board.EditingMode == InkCanvasEditingMode.Ink) SetPen(); }
+    private void Colour_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || Board == null || WidthSlider == null) return;
+        SetPen();
+    }
+
+    private void Width_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_loading || WidthSlider == null) return;
+        if (WidthLabel != null) WidthLabel.Text = $"{WidthSlider.Value:0} px";
+        if (Board != null && Board.EditingMode == InkCanvasEditingMode.Ink) SetPen();
+    }
 
     private void Background_Changed(object sender, SelectionChangedEventArgs e) { if (!_loading && Board != null) ApplyBackground(); }
     private void ApplyBackground()
