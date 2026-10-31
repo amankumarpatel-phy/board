@@ -28,6 +28,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet, wi
 - Movable and resizable webcam picture-in-picture window
 - Configurable laser pointer colour and fade duration (2–30 seconds)
 - Blackboard and cream board backgrounds in addition to plain, grid, ruled and dotted styles
+- Equation Composer with common Greek, calculus and mathematical symbols and LaTeX-style command substitutions
+- 2D function plotter for expressions using arithmetic, powers, trigonometric, inverse-trigonometric, exponential, logarithmic and square-root functions; graph can be inserted as a board image
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
