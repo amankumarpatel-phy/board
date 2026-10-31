@@ -390,8 +390,8 @@ public partial class MainWindow : Window
         }
         if (!_drawingShape) return;
         Point end=e.GetPosition(Board); _drawingShape=false; Board.ReleaseMouseCapture();
-        var points=CreateShapePoints(_shapeStart,end,_shapeTool);
-        if(points.Count>1){SaveUndo(); Board.Strokes.Add(new Stroke(points,new DrawingAttributes{Color=SelectedColor(),Width=WidthSlider.Value,Height=WidthSlider.Value,FitToCurve=true,IgnorePressure=true}));}
+        var shapePoints=CreateShapePoints(_shapeStart,end,_shapeTool);
+        if(shapePoints.Count>1){SaveUndo(); Board.Strokes.Add(new Stroke(shapePoints,new DrawingAttributes{Color=SelectedColor(),Width=WidthSlider.Value,Height=WidthSlider.Value,FitToCurve=true,IgnorePressure=true}));}
         e.Handled=true;
     }
     private static StylusPointCollection CreateShapePoints(Point start,Point end,string tool)
