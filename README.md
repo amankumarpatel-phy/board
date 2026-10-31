@@ -15,6 +15,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet. Bu
 - Zoom controls (50%–250%) with scrollable canvas navigation
 - Mouse-wheel/scrollbar navigation through the zoomed board
 - Open PDF files and navigate page-by-page
+- Insert editable text boxes and image objects onto the board
+- Save and restore inserted text and images in `.aeb` lesson files
 - Render PDF pages as the board background while keeping pen annotations editable
 - Save the source PDF inside the `.aeb` lesson file so the lesson remains portable
 - Export the current page to PNG
