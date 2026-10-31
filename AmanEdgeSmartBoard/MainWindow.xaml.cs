@@ -10,6 +10,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Docnet.Core;
 using Docnet.Core.Models;
+using OpenCvSharp;
+using System.Windows.Threading;
 
 namespace AmanEdgeSmartBoard;
 
@@ -33,6 +35,13 @@ public partial class MainWindow : Window
     private readonly Dictionary<int, StrokeCollection> _pdfAnnotations = new();
     private readonly Dictionary<int, List<BoardElement>> _pdfPageElements = new();
     private bool _changingPdfPage;
+    private VideoCapture? _camera;
+    private readonly DispatcherTimer _cameraTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
+    private readonly DispatcherTimer _laserExpiryTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly Dictionary<Stroke, DateTime> _laserStrokes = new();
+    private bool _laserMode;
+    private bool _laserDrawing;
+    private StylusPointCollection? _laserPoints;
 
     public MainWindow()
     {
@@ -45,6 +54,11 @@ public partial class MainWindow : Window
         SetPen();
         Board.PreviewMouseLeftButtonDown += Board_MouseDown;
         Board.PreviewMouseLeftButtonUp += Board_MouseUp;
+        Board.PreviewMouseMove += Board_MouseMove;
+        _cameraTimer.Tick += CameraTimer_Tick;
+        _laserExpiryTimer.Tick += LaserExpiryTimer_Tick;
+        _laserExpiryTimer.Start();
+        Closed += (_, _) => StopCamera();
     }
 
     private Color SelectedColor() => (ColourBox.SelectedItem as ComboBoxItem)?.Content?.ToString() switch
@@ -62,7 +76,67 @@ public partial class MainWindow : Window
         };
     }
 
-    private StrokeCollection Snapshot() => new(Board.Strokes);
+    private StrokeCollection Snapshot()
+    {
+        RemoveLaserStrokes();
+        return new StrokeCollection(Board.Strokes);
+    }
+
+    private void LaserToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _laserMode = !_laserMode;
+        if (_laserMode) { _shapeTool = "Laser"; Board.EditingMode = InkCanvasEditingMode.None; }
+        else { _shapeTool = "Pen"; Board.EditingMode = InkCanvasEditingMode.Ink; SetPen(); }
+        ((Button)sender).Content = _laserMode ? "Laser ON (10s)" : "Laser 10s";
+    }
+
+    private void LaserExpiryTimer_Tick(object? sender, EventArgs e) => RemoveLaserStrokes();
+
+    private void RemoveLaserStrokes()
+    {
+        var expired = _laserStrokes.Where(pair => pair.Value <= DateTime.UtcNow).Select(pair => pair.Key).ToList();
+        foreach (var stroke in expired) { Board.Strokes.Remove(stroke); _laserStrokes.Remove(stroke); }
+    }
+
+    private void CameraToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_camera != null) { StopCamera(); ((Button)sender).Content = "Camera On / Off"; return; }
+        try
+        {
+            _camera = new VideoCapture(0);
+            if (!_camera.IsOpened()) { StopCamera(); MessageBox.Show("No camera was found. Connect a webcam and check Windows camera permissions.", "Camera unavailable", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            CameraFrame.Visibility = Visibility.Visible;
+            _cameraTimer.Start();
+            ((Button)sender).Content = "Camera Off";
+        }
+        catch (Exception ex) { StopCamera(); MessageBox.Show($"Unable to start camera: {ex.Message}", "Camera error", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void StopCamera()
+    {
+        _cameraTimer.Stop();
+        _camera?.Release();
+        _camera?.Dispose();
+        _camera = null;
+        if (CameraFrame != null) CameraFrame.Visibility = Visibility.Collapsed;
+        if (CameraPreview != null) CameraPreview.Source = null;
+    }
+
+    private void CameraTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_camera == null || !_camera.IsOpened()) return;
+        try
+        {
+            using var frame = new Mat();
+            if (!_camera.Read(frame) || frame.Empty()) return;
+            Cv2.ImEncode(".png", frame, out byte[] bytes);
+            using var stream = new MemoryStream(bytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze();
+            CameraPreview.Source = bitmap;
+        }
+        catch { StopCamera(); }
+    }
 
     private void SaveUndo()
     {
@@ -139,6 +213,7 @@ public partial class MainWindow : Window
     private void StoreCurrentPdfPage()
     {
         if (_pdfBytes == null) return;
+        RemoveLaserStrokes();
         _pdfAnnotations[_pdfPageIndex] = new StrokeCollection(Board.Strokes);
         _pdfPageElements[_pdfPageIndex] = CaptureElements();
     }
@@ -231,9 +306,35 @@ public partial class MainWindow : Window
     private void Ellipse_Click(object sender, RoutedEventArgs e) => SetShapeTool("Ellipse");
     private void Arrow_Click(object sender, RoutedEventArgs e) => SetShapeTool("Arrow");
     private void SetShapeTool(string tool) { _shapeTool = tool; Board.EditingMode = InkCanvasEditingMode.None; }
-    private void Board_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) { if (_shapeTool == "Pen" || _shapeTool == "Highlighter") return; _shapeStart=e.GetPosition(Board); _drawingShape=true; Board.CaptureMouse(); e.Handled=true; }
+    private void Board_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_laserMode)
+        {
+            _laserDrawing = true; _laserPoints = new StylusPointCollection();
+            var p = e.GetPosition(Board); _laserPoints.Add(new StylusPoint(p.X, p.Y));
+            Board.CaptureMouse(); e.Handled = true; return;
+        }
+        if (_shapeTool == "Pen" || _shapeTool == "Highlighter") return;
+        _shapeStart=e.GetPosition(Board); _drawingShape=true; Board.CaptureMouse(); e.Handled=true;
+    }
+
+    private void Board_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_laserDrawing || _laserPoints == null || e.LeftButton != MouseButtonState.Pressed) return;
+        var p = e.GetPosition(Board); _laserPoints.Add(new StylusPoint(p.X, p.Y));
+    }
     private void Board_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        if (_laserDrawing && _laserPoints != null)
+        {
+            var points = _laserPoints; _laserPoints = null; _laserDrawing = false; Board.ReleaseMouseCapture();
+            if (points.Count > 1)
+            {
+                var laser = new Stroke(points, new DrawingAttributes { Color = Colors.Red, Width = 5, Height = 5, FitToCurve = true, IgnorePressure = true });
+                Board.Strokes.Add(laser); _laserStrokes[laser] = DateTime.UtcNow.AddSeconds(10);
+            }
+            e.Handled = true; return;
+        }
         if (!_drawingShape) return;
         Point end=e.GetPosition(Board); _drawingShape=false; Board.ReleaseMouseCapture();
         var points=CreateShapePoints(_shapeStart,end,_shapeTool);
@@ -328,6 +429,7 @@ public partial class MainWindow : Window
     }
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        RemoveLaserStrokes();
         var dialog = new SaveFileDialog { Filter = "Aman Edge Board (*.aeb)|*.aeb", DefaultExt = ".aeb", FileName = string.IsNullOrWhiteSpace(_currentFile) ? "Lesson.aeb" : Path.GetFileName(_currentFile) };
         if (dialog.ShowDialog() != true) return;
         _pages[_pageIndex] = Board.Strokes;
@@ -360,6 +462,7 @@ public partial class MainWindow : Window
     }
     private void Export_Click(object sender, RoutedEventArgs e)
     {
+        RemoveLaserStrokes();
         var dialog = new SaveFileDialog { Filter = "PNG image (*.png)|*.png", DefaultExt = ".png", FileName = $"Board-Page-{_pageIndex + 1}.png" };
         if (dialog.ShowDialog() != true) return;
         var size = new Size(Math.Max(1, Board.ActualWidth), Math.Max(1, Board.ActualHeight));
