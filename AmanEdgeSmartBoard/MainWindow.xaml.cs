@@ -10,7 +10,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Docnet.Core;
 using Docnet.Core.Models;
-using OpenCvSharp;
+using VideoCapture = OpenCvSharp.VideoCapture;
+using Mat = OpenCvSharp.Mat;
+using Cv2 = OpenCvSharp.Cv2;
 using System.Windows.Threading;
 
 namespace AmanEdgeSmartBoard;
