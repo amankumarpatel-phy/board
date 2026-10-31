@@ -8,6 +8,8 @@ using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Docnet.Core;
+using Docnet.Core.Models;
 
 namespace AmanEdgeSmartBoard;
 
@@ -23,6 +25,10 @@ public partial class MainWindow : Window
     private Point _shapeStart;
     private bool _drawingShape;
     private readonly ScaleTransform _boardScale = new(1, 1);
+    private byte[]? _pdfBytes;
+    private int _pdfPageIndex;
+    private int _pdfPageCount;
+    private string? _pdfFileName;
 
     public MainWindow()
     {
@@ -59,6 +65,50 @@ public partial class MainWindow : Window
         _undo.Push(Snapshot());
         if (_undo.Count > 50) { var keep = _undo.Reverse().Take(50).Reverse().ToArray(); _undo.Clear(); foreach (var s in keep) _undo.Push(s); }
         _redo.Clear();
+    }
+
+    private void OpenPdf_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "PDF documents (*.pdf)|*.pdf" };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            _pdfBytes = File.ReadAllBytes(dialog.FileName);
+            _pdfFileName = Path.GetFileName(dialog.FileName);
+            _pdfPageIndex = 0;
+            using var reader = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5));
+            _pdfPageCount = reader.GetPageCount();
+            RenderPdfPage();
+        }
+        catch (Exception ex)
+        {
+            _pdfBytes = null; _pdfPageCount = 0;
+            MessageBox.Show($"Unable to open PDF: {ex.Message}", "PDF error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void PreviousPdf_Click(object sender, RoutedEventArgs e) => ChangePdfPage(-1);
+    private void NextPdf_Click(object sender, RoutedEventArgs e) => ChangePdfPage(1);
+    private void ChangePdfPage(int delta)
+    {
+        if (_pdfBytes == null) return;
+        int next = Math.Clamp(_pdfPageIndex + delta, 0, _pdfPageCount - 1);
+        if (next == _pdfPageIndex) return;
+        _pdfPageIndex = next;
+        RenderPdfPage();
+    }
+
+    private void RenderPdfPage()
+    {
+        if (_pdfBytes == null) return;
+        using var reader = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5));
+        using var page = reader.GetPageReader(_pdfPageIndex);
+        int width = page.GetPageWidth(), height = page.GetPageHeight();
+        byte[] pixels = page.GetImage();
+        var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
+        bitmap.Freeze();
+        Board.Background = new ImageBrush(bitmap) { Stretch = Stretch.Uniform, AlignmentX = AlignmentX.Center, AlignmentY = AlignmentY.Center };
+        PdfPageLabel.Text = $"PDF: {_pdfPageIndex + 1} / {_pdfPageCount}";
     }
 
     private void Zoom_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -178,7 +228,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true) return;
         _pages[_pageIndex] = Board.Strokes;
         var data = _pages.Select(p => { using var ms = new MemoryStream(); p.Save(ms); return Convert.ToBase64String(ms.ToArray()); }).ToArray();
-        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 1, Pages = data }));
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 2, Pages = data, PdfBytes = _pdfBytes == null ? null : Convert.ToBase64String(_pdfBytes), PdfPageIndex = _pdfPageIndex, PdfFileName = _pdfFileName }));
         _currentFile = dialog.FileName; MessageBox.Show("Board saved successfully.", "AMAN EDGE SMARTBOARD", MessageBoxButton.OK, MessageBoxImage.Information);
     }
     private void Open_Click(object sender, RoutedEventArgs e)
@@ -192,6 +242,10 @@ public partial class MainWindow : Window
             foreach (var encoded in doc.Pages) { using var ms = new MemoryStream(Convert.FromBase64String(encoded)); _pages.Add(new StrokeCollection(ms)); }
             if (_pages.Count == 0) _pages.Add(new StrokeCollection());
             _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = dialog.FileName; UpdatePageLabel();
+            _pdfBytes = string.IsNullOrEmpty(doc.PdfBytes) ? null : Convert.FromBase64String(doc.PdfBytes);
+            _pdfFileName = doc.PdfFileName; _pdfPageIndex = doc.PdfPageIndex;
+            if (_pdfBytes != null) { using var pdf = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5)); _pdfPageCount = pdf.GetPageCount(); _pdfPageIndex = Math.Clamp(_pdfPageIndex, 0, Math.Max(0, _pdfPageCount - 1)); RenderPdfPage(); }
+            else { _pdfPageCount = 0; PdfPageLabel.Text = "No PDF"; Board.Background = Brushes.White; ApplyBackground(); }
         }
         catch (Exception ex) { MessageBox.Show($"Could not open file: {ex.Message}", "Open error", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
@@ -206,5 +260,5 @@ public partial class MainWindow : Window
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(dialog.FileName); encoder.Save(stream);
     }
-    private sealed class BoardDocument { public int Version { get; set; } = 1; public string[] Pages { get; set; } = Array.Empty<string>(); }
+    private sealed class BoardDocument { public int Version { get; set; } = 2; public string[] Pages { get; set; } = Array.Empty<string>(); public string? PdfBytes { get; set; } public int PdfPageIndex { get; set; } public string? PdfFileName { get; set; } }
 }
