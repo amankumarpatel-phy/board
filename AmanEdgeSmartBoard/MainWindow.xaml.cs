@@ -279,6 +279,87 @@ public partial class MainWindow : Window
         RenderPdfPage();
     }
 
+    private void EquationEditor_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window { Title = "Equation Composer — LaTeX-style", Width = 650, Height = 420, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)) };
+        var panel = new DockPanel { Margin = new Thickness(16) };
+        var input = new TextBox { Text = @"E = mc^2", FontSize = 22, Padding = new Thickness(10), AcceptsReturn = true, Height = 100, TextWrapping = TextWrapping.Wrap };
+        DockPanel.SetDock(input, Dock.Top); panel.Children.Add(input);
+        var symbols = new WrapPanel { Margin = new Thickness(0,10,0,10) };
+        foreach (var symbol in new[] { "α","β","γ","Δ","θ","λ","π","ω","∞","±","×","÷","√","∫","∑","∂","∇","→","≤","≥","≠","≈","²","³","ⁿ","₀","₁","ₙ" })
+        {
+            var button = new Button { Content = symbol, Padding = new Thickness(9,5,9,5), Margin = new Thickness(2) };
+            button.Click += (_, _) => { int pos = input.CaretIndex; input.Text = input.Text.Insert(pos, symbol); input.CaretIndex = pos + symbol.Length; input.Focus(); };
+            symbols.Children.Add(button);
+        }
+        DockPanel.SetDock(symbols, Dock.Top); panel.Children.Add(symbols);
+        var preview = new TextBlock { Text = "Preview: E = mc²", FontSize = 22, Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap };
+        input.TextChanged += (_, _) => preview.Text = "Preview: " + FormatEquation(input.Text);
+        DockPanel.SetDock(preview, Dock.Top); panel.Children.Add(preview);
+        var add = new Button { Content = "Insert equation on board", Padding = new Thickness(12,9,12,9) };
+        add.Click += (_, _) => { if (!string.IsNullOrWhiteSpace(input.Text)) dialog.DialogResult = true; };
+        DockPanel.SetDock(add, Dock.Bottom); panel.Children.Add(add); dialog.Content = panel;
+        if (dialog.ShowDialog() != true) return;
+        SaveUndo();
+        var equation = new TextBox { Text = FormatEquation(input.Text), FontSize = 28, FontFamily = new System.Windows.Media.FontFamily("Cambria Math"), Foreground = new SolidColorBrush(SelectedColor()), Background = Brushes.Transparent, BorderThickness = new Thickness(0), MinWidth = 260, MinHeight = 48, Padding = new Thickness(4), Tag = "AEB_TEXT" };
+        InkCanvas.SetLeft(equation, 100); InkCanvas.SetTop(equation, 100 + (_textObjectCount++ % 8) * 34); Board.Children.Add(equation);
+    }
+
+    private static string FormatEquation(string source)
+    {
+        var replacements = new Dictionary<string,string> { [@"\alpha"]="α",[ @"\beta"]="β",[ @"\gamma"]="γ",[ @"\Delta"]="Δ",[ @"\theta"]="θ",[ @"\lambda"]="λ",[ @"\pi"]="π",[ @"\omega"]="ω",[ @"\infty"]="∞",[ @"\pm"]="±",[ @"\times"]="×",[ @"\div"]="÷",[ @"\sqrt"]="√",[ @"\int"]="∫",[ @"\sum"]="∑",[ @"\partial"]="∂",[ @"\nabla"]="∇",[ @"\rightarrow"]="→",[ @"\leq"]="≤",[ @"\geq"]="≥",[ @"\neq"]="≠",[ @"\approx"]="≈",[ @"\mu"]="μ",[ @"\sigma"]="σ",[ @"\phi"]="φ",[ @"\hbar"]="ℏ",[ @"\cdot"]="·" };
+        foreach (var pair in replacements) source = source.Replace(pair.Key, pair.Value, StringComparison.Ordinal);
+        return source.Replace("^2","²").Replace("^3","³").Replace("_0","₀").Replace("_1","₁").Replace("{","").Replace("}","");
+    }
+
+    private void Plotter_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window { Title = "AMAN EDGE — 2D Function Plotter", Width = 900, Height = 680, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = new SolidColorBrush(Color.FromRgb(15, 23, 42)) };
+        var root = new DockPanel { Margin = new Thickness(14) };
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0,0,0,10) };
+        var function = new TextBox { Text = "sin(x)", Width = 180, FontSize = 16, Padding = new Thickness(7), Margin = new Thickness(4) };
+        var xmin = new TextBox { Text = "-10", Width = 65, Padding = new Thickness(7), Margin = new Thickness(4) };
+        var xmax = new TextBox { Text = "10", Width = 65, Padding = new Thickness(7), Margin = new Thickness(4) };
+        var plot = new Button { Content = "Plot function", Padding = new Thickness(12,7,12,7), Margin = new Thickness(4) };
+        var add = new Button { Content = "Insert graph on board", Padding = new Thickness(12,7,12,7), Margin = new Thickness(4) };
+        controls.Children.Add(new TextBlock { Text = "f(x) =", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center }); controls.Children.Add(function);
+        controls.Children.Add(new TextBlock { Text = "x min", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center }); controls.Children.Add(xmin);
+        controls.Children.Add(new TextBlock { Text = "x max", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center }); controls.Children.Add(xmax);
+        controls.Children.Add(plot); controls.Children.Add(add); DockPanel.SetDock(controls, Dock.Top); root.Children.Add(controls);
+        var canvas = new Canvas { Background = Brushes.White, ClipToBounds = true, MinHeight = 500 }; root.Children.Add(canvas);
+        string error = "";
+        void Draw()
+        {
+            canvas.Children.Clear(); double w = Math.Max(300, canvas.ActualWidth), h = Math.Max(300, canvas.ActualHeight);
+            if (!double.TryParse(xmin.Text, out double lo) || !double.TryParse(xmax.Text, out double hi) || !double.IsFinite(lo) || !double.IsFinite(hi) || hi <= lo) { error = "Enter valid x limits."; return; }
+            var values = new List<(double x,double y)>(); double ymin=double.PositiveInfinity,ymax=double.NegativeInfinity;
+            for(int i=0;i<1200;i++){double xx=lo+(hi-lo)*i/1199.0; try{double yy=new FunctionParser(function.Text,xx).Parse();if(double.IsFinite(yy)){values.Add((xx,yy));ymin=Math.Min(ymin,yy);ymax=Math.Max(ymax,yy);}else values.Add((xx,double.NaN));}catch{values.Add((xx,double.NaN));}}
+            if(!double.IsFinite(ymin)||!double.IsFinite(ymax)){error="Unsupported or invalid expression. Try sin(x), x^2, exp(-x^2), log(x), sqrt(abs(x)).";return;}
+            if(Math.Abs(ymax-ymin)<1e-9){ymin-=1;ymax+=1;} double pad=(ymax-ymin)*.08;ymin-=pad;ymax+=pad;
+            double X(double xx)=>(xx-lo)/(hi-lo)*w; double Y(double yy)=>h-(yy-ymin)/(ymax-ymin)*h;
+            for(int k=0;k<=10;k++){double gx=k*w/10,gy=k*h/10;canvas.Children.Add(new System.Windows.Shapes.Line{X1=gx,Y1=0,X2=gx,Y2=h,Stroke=new SolidColorBrush(Color.FromRgb(230,235,242)),StrokeThickness=1});canvas.Children.Add(new System.Windows.Shapes.Line{X1=0,Y1=gy,X2=w,Y2=gy,Stroke=new SolidColorBrush(Color.FromRgb(230,235,242)),StrokeThickness=1});}
+            if(lo<=0&&hi>=0){double ax=X(0);canvas.Children.Add(new System.Windows.Shapes.Line{X1=ax,Y1=0,X2=ax,Y2=h,Stroke=Brushes.Gray,StrokeThickness=1.6});}
+            if(ymin<=0&&ymax>=0){double ay=Y(0);canvas.Children.Add(new System.Windows.Shapes.Line{X1=0,Y1=ay,X2=w,Y2=ay,Stroke=Brushes.Gray,StrokeThickness=1.6});}
+            var geometry=new StreamGeometry();using(var ctx=geometry.Open()){bool open=false;foreach(var v in values){if(!double.IsFinite(v.y)){open=false;continue;}var p=new Point(X(v.x),Y(v.y));if(!open){ctx.BeginFigure(p,false,false);open=true;}else ctx.LineTo(p,true,false);}}geometry.Freeze();
+            canvas.Children.Add(new System.Windows.Shapes.Path{Data=geometry,Stroke=new SolidColorBrush(Color.FromRgb(30,90,180)),StrokeThickness=2.2});error="";
+        }
+        canvas.SizeChanged += (_,_)=>Draw(); plot.Click += (_,_)=>Draw();
+        add.Click += (_,_)=>{Draw();if(!string.IsNullOrEmpty(error)){MessageBox.Show(error,"Plot error");return;}var size=new Size(Math.Max(1,canvas.ActualWidth),Math.Max(1,canvas.ActualHeight));var bmp=new RenderTargetBitmap((int)size.Width,(int)size.Height,96,96,PixelFormats.Pbgra32);bmp.Render(canvas);var image=new System.Windows.Controls.Image{Source=bmp,Width=Math.Min(size.Width,900),Height=Math.Min(size.Height,560),Stretch=Stretch.Uniform,Tag="AEB_IMAGE"};SaveUndo();InkCanvas.SetLeft(image,90);InkCanvas.SetTop(image,90);Board.Children.Add(image);dialog.Close();};
+        dialog.Content=root; dialog.Loaded += (_,_)=>Draw(); dialog.ShowDialog();
+    }
+
+    private sealed class FunctionParser
+    {
+        private readonly string _s; private readonly double _x; private int _i;
+        public FunctionParser(string expression,double x){_s=expression.Replace(" ","").ToLowerInvariant();_x=x;}
+        public double Parse(){double v=Expression();if(_i<_s.Length)throw new FormatException();return v;}
+        private double Expression(){double v=Term();while(_i<_s.Length&&(_s[_i]=='+'||_s[_i]=='-')){char op=_s[_i++];double b=Term();v=op=='+'?v+b:v-b;}return v;}
+        private double Term(){double v=Power();while(_i<_s.Length&&(_s[_i]=='*'||_s[_i]=='/')){char op=_s[_i++];double b=Power();v=op=='*'?v*b:v/b;}return v;}
+        private double Power(){double v=Unary();if(_i<_s.Length&&_s[_i]=='^'){_i++;v=Math.Pow(v,Power());}return v;}
+        private double Unary(){if(_i<_s.Length&&_s[_i]=='+'){_i++;return Unary();}if(_i<_s.Length&&_s[_i]=='-'){_i++;return -Unary();}return Atom();}
+        private double Atom(){if(_i>=_s.Length)throw new FormatException();if(_s[_i]=='('){_i++;double v=Expression();if(_i>=_s.Length||_s[_i++]!=')')throw new FormatException();return v;}if(char.IsDigit(_s[_i])||_s[_i]=='.'){int st=_i;while(_i<_s.Length&&(char.IsDigit(_s[_i])||_s[_i]=='.'))_i++;return double.Parse(_s[st.._i],System.Globalization.CultureInfo.InvariantCulture);}if(char.IsLetter(_s[_i])){int st=_i;while(_i<_s.Length&&char.IsLetter(_s[_i]))_i++;string name=_s[st.._i];if(name=="x")return _x;if(name=="pi")return Math.PI;if(name=="e")return Math.E;if(_i<_s.Length&&_s[_i]=='('){_i++;double a=Expression();if(_i>=_s.Length||_s[_i++]!=')')throw new FormatException();return name switch{"sin"=>Math.Sin(a),"cos"=>Math.Cos(a),"tan"=>Math.Tan(a),"asin"=>Math.Asin(a),"acos"=>Math.Acos(a),"atan"=>Math.Atan(a),"exp"=>Math.Exp(a),"log" or "ln"=>Math.Log(a),"sqrt"=>Math.Sqrt(a),"abs"=>Math.Abs(a),_=>throw new FormatException()};}}throw new FormatException();}
+    }
+
     private void AddText_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Window { Title = "Insert text", Width = 420, Height = 260, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, Background = Brushes.White, ResizeMode = ResizeMode.NoResize };
