@@ -20,6 +20,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet. Bu
 - Save and restore inserted text and images in `.aeb` lesson files
 - Render PDF pages as the board background while keeping pen annotations editable
 - Save the source PDF inside the `.aeb` lesson file so the lesson remains portable
+- Live webcam picture-in-picture preview with camera on/off control (OpenCvSharp; default camera device)
+- Temporary red laser-pointer strokes that automatically disappear after 10 seconds and are excluded from lesson saves and PNG exports
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
