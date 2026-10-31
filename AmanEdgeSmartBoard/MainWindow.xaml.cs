@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         Board.DefaultDrawingAttributes = new DrawingAttributes
         {
             Color = SelectedColor(), Width = WidthSlider.Value, Height = WidthSlider.Value,
-            FitToCurve = true, IgnorePressure = false, Stylus tip = StylusTip.Ellipse
+            FitToCurve = true, IgnorePressure = false, StylusTip = StylusTip.Ellipse
         };
     }
 
