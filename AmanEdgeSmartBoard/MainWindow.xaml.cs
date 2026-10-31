@@ -149,7 +149,7 @@ public partial class MainWindow : Window
         {
             double left = InkCanvas.GetLeft(child), top = InkCanvas.GetTop(child);
             if (child is TextBox text && Equals(text.Tag, "AEB_TEXT"))
-                elements.Add(new BoardElement { Type = "text", Content = text.Text, X = double.IsNaN(left) ? 0 : left, Y = double.IsNaN(top) ? 0 : top, Width = text.Width, Height = text.Height, FontSize = text.FontSize });
+                elements.Add(new BoardElement { Type = "text", Content = text.Text, X = double.IsNaN(left) ? 0 : left, Y = double.IsNaN(top) ? 0 : top, Width = double.IsNaN(text.Width) ? text.ActualWidth : text.Width, Height = double.IsNaN(text.Height) ? text.ActualHeight : text.Height, FontSize = text.FontSize });
             else if (child is System.Windows.Controls.Image image && Equals(image.Tag, "AEB_IMAGE") && image.Source is BitmapSource source)
             {
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var ms = new MemoryStream(); encoder.Save(ms);
