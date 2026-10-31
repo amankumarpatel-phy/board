@@ -30,6 +30,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet, wi
 - Blackboard and cream board backgrounds in addition to plain, grid, ruled and dotted styles
 - Equation Composer with common Greek, calculus and mathematical symbols and LaTeX-style command substitutions
 - 2D function plotter for expressions using arithmetic, powers, trigonometric, inverse-trigonometric, exponential, logarithmic and square-root functions; graph can be inserted as a board image
+- Equation Composer with common Greek, calculus and mathematical symbols and LaTeX-style command substitutions
+- 2D function plotter for arithmetic, powers, trigonometric, inverse-trigonometric, exponential, logarithmic and square-root functions; graphs can be inserted as board images
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
