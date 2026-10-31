@@ -21,12 +21,14 @@ public partial class MainWindow : Window
     private string _shapeTool = "Pen";
     private Point _shapeStart;
     private bool _drawingShape;
+    private readonly ScaleTransform _boardScale = new(1, 1);
 
     public MainWindow()
     {
         InitializeComponent();
         _pages.Add(new StrokeCollection());
         Board.Strokes = _pages[0];
+        Board.RenderTransform = _boardScale;
         Board.Strokes.StrokesChanged += (_, _) => { };
         ApplyBackground();
         SetPen();
@@ -57,6 +59,16 @@ public partial class MainWindow : Window
         if (_undo.Count > 50) { var keep = _undo.Reverse().Take(50).Reverse().ToArray(); _undo.Clear(); foreach (var s in keep) _undo.Push(s); }
         _redo.Clear();
     }
+
+    private void Zoom_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_boardScale == null) return;
+        _boardScale.ScaleX = ZoomSlider.Value;
+        _boardScale.ScaleY = ZoomSlider.Value;
+    }
+    private void ZoomIn_Click(object sender, RoutedEventArgs e) => ZoomSlider.Value = Math.Min(ZoomSlider.Maximum, ZoomSlider.Value + 0.1);
+    private void ZoomOut_Click(object sender, RoutedEventArgs e) => ZoomSlider.Value = Math.Max(ZoomSlider.Minimum, ZoomSlider.Value - 0.1);
+    private void ZoomReset_Click(object sender, RoutedEventArgs e) => ZoomSlider.Value = 1;
 
     private void Pen_Click(object sender, RoutedEventArgs e) { _shapeTool = "Pen"; Board.EditingMode = InkCanvasEditingMode.Ink; SetPen(); }
     private void Line_Click(object sender, RoutedEventArgs e) => SetShapeTool("Line");
