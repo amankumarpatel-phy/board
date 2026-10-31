@@ -18,6 +18,9 @@ public partial class MainWindow : Window
     private int _pageIndex;
     private bool _loading;
     private string _currentFile = "";
+    private string _shapeTool = "Pen";
+    private Point _shapeStart;
+    private bool _drawingShape;
 
     public MainWindow()
     {
@@ -27,6 +30,8 @@ public partial class MainWindow : Window
         Board.Strokes.StrokesChanged += (_, _) => { };
         ApplyBackground();
         SetPen();
+        Board.PreviewMouseLeftButtonDown += Board_MouseDown;
+        Board.PreviewMouseLeftButtonUp += Board_MouseUp;
     }
 
     private Color SelectedColor() => (ColourBox.SelectedItem as ComboBoxItem)?.Content?.ToString() switch
@@ -53,9 +58,39 @@ public partial class MainWindow : Window
         _redo.Clear();
     }
 
-    private void Pen_Click(object sender, RoutedEventArgs e) { Board.EditingMode = InkCanvasEditingMode.Ink; SetPen(); }
+    private void Pen_Click(object sender, RoutedEventArgs e) { _shapeTool = "Pen"; Board.EditingMode = InkCanvasEditingMode.Ink; SetPen(); }
+    private void Line_Click(object sender, RoutedEventArgs e) => SetShapeTool("Line");
+    private void Rectangle_Click(object sender, RoutedEventArgs e) => SetShapeTool("Rectangle");
+    private void Ellipse_Click(object sender, RoutedEventArgs e) => SetShapeTool("Ellipse");
+    private void Arrow_Click(object sender, RoutedEventArgs e) => SetShapeTool("Arrow");
+    private void SetShapeTool(string tool) { _shapeTool = tool; Board.EditingMode = InkCanvasEditingMode.None; }
+    private void Board_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) { if (_shapeTool == "Pen" || _shapeTool == "Highlighter") return; _shapeStart=e.GetPosition(Board); _drawingShape=true; Board.CaptureMouse(); e.Handled=true; }
+    private void Board_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_drawingShape) return;
+        Point end=e.GetPosition(Board); _drawingShape=false; Board.ReleaseMouseCapture();
+        var points=CreateShapePoints(_shapeStart,end,_shapeTool);
+        if(points.Count>1){SaveUndo(); Board.Strokes.Add(new Stroke(points,new DrawingAttributes{Color=SelectedColor(),Width=WidthSlider.Value,Height=WidthSlider.Value,FitToCurve=true,IgnorePressure=true}));}
+        e.Handled=true;
+    }
+    private static StylusPointCollection CreateShapePoints(Point start,Point end,string tool)
+    {
+        var points=new StylusPointCollection(); void Add(Point p)=>points.Add(new StylusPoint(p.X,p.Y));
+        if(tool=="Line"){Add(start);Add(end);}
+        else if(tool=="Rectangle"){Add(start);Add(new Point(end.X,start.Y));Add(end);Add(new Point(start.X,end.Y));Add(start);}
+        else if(tool=="Ellipse"){double cx=(start.X+end.X)/2,cy=(start.Y+end.Y)/2,rx=Math.Abs(end.X-start.X)/2,ry=Math.Abs(end.Y-start.Y)/2;for(int i=0;i<=64;i++){double a=2*Math.PI*i/64;Add(new Point(cx+rx*Math.Cos(a),cy+ry*Math.Sin(a)));}}
+        else if(tool=="Arrow"){double dx=end.X-start.X,dy=end.Y-start.Y,len=Math.Sqrt(dx*dx+dy*dy);if(len<1)return points;double ux=dx/len,uy=dy/len,h=Math.Min(22,len*.35);Add(start);Add(end);Add(new Point(end.X-h*ux-h*.55*uy,end.Y-h*uy+h*.55*ux));Add(end);Add(new Point(end.X-h*ux+h*.55*uy,end.Y-h*uy-h*.55*ux));}
+        return points;
+    }
+    private void Window_PreviewKeyDown(object sender,System.Windows.Input.KeyEventArgs e)
+    {
+        if(System.Windows.Input.Keyboard.Modifiers==System.Windows.Input.ModifierKeys.Control&&e.Key==System.Windows.Input.Key.Z){Undo_Click(this,new RoutedEventArgs());e.Handled=true;}
+        else if(System.Windows.Input.Keyboard.Modifiers==System.Windows.Input.ModifierKeys.Control&&e.Key==System.Windows.Input.Key.Y){Redo_Click(this,new RoutedEventArgs());e.Handled=true;}
+        else if(e.Key==System.Windows.Input.Key.Escape){_shapeTool="Pen";Board.EditingMode=InkCanvasEditingMode.Ink;SetPen();}
+    }
     private void Highlighter_Click(object sender, RoutedEventArgs e)
     {
+        _shapeTool = "Highlighter";
         Board.EditingMode = InkCanvasEditingMode.Ink;
         var a = new DrawingAttributes { Color = SelectedColor(), Width = WidthSlider.Value * 4, Height = WidthSlider.Value * 4, IsHighlighter = true, IgnorePressure = true };
         Board.DefaultDrawingAttributes = a;
