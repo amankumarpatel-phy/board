@@ -29,22 +29,28 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet, wi
 - Configurable laser pointer colour and fade duration (2–30 seconds)
 - Blackboard and cream board backgrounds in addition to plain, grid, ruled and dotted styles
 - Equation Composer with common Greek, calculus and mathematical symbols and LaTeX-style command substitutions
-- 2D function plotter for expressions using arithmetic, powers, trigonometric, inverse-trigonometric, exponential, logarithmic and square-root functions; graph can be inserted as a board image
-- Equation Composer with common Greek, calculus and mathematical symbols and LaTeX-style command substitutions
 - 2D function plotter for arithmetic, powers, trigonometric, inverse-trigonometric, exponential, logarithmic and square-root functions; graphs can be inserted as board images
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
-## Build on Windows
-1. Install the .NET 10 SDK.
-2. Open the repository root in PowerShell.
-3. Run:
+## Install on Windows
+1. Open the latest successful **Build Windows installer** run in GitHub Actions.
+2. Download the artifact named `AMAN-EDGE-SMARTBOARD-Setup-Windows-x64`.
+3. Extract the artifact ZIP and run the setup EXE.
+4. Follow the setup wizard. A Start Menu shortcut is created; a desktop shortcut is optional.
+5. The installer includes the self-contained application, so a separate .NET runtime installation is not required.
+
+The installer supports 64-bit Windows. Windows may display a SmartScreen warning because the installer is not code-signed; only proceed if you downloaded it from this repository's Actions artifact.
+
+## Build on Windows manually
+1. Install the .NET 10 SDK and Inno Setup 6.
+2. Publish the application:
    ```powershell
    dotnet publish AmanEdgeSmartBoard/AmanEdgeSmartBoard.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
    ```
-4. Run `publish/AmanEdgeSmartBoard.exe`.
+3. Compile `installer/AmanEdgeSmartBoard.iss` with Inno Setup Compiler (ISCC), from the repository root.
 
-A Windows x64 build is also produced automatically by GitHub Actions on each push to `main`. Download it from the workflow run's **Artifacts** section.
+Every push to `main` and manual workflow dispatch builds a Windows x64 installer and uploads it as a downloadable GitHub Actions artifact. A separate portable EXE artifact is also published.
 
 ## Pen tablet setup
 Connect the tablet, install its Windows driver, and set Windows pen/stylus mode if the manufacturer offers that option. The board uses WPF stylus events and pressure-aware ink attributes; pressure support depends on the tablet driver.
