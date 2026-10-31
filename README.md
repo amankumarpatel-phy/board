@@ -1,6 +1,6 @@
 # AMAN EDGE SMARTBOARD
 
-A Windows desktop teaching board designed for a laptop + graphics pen tablet. Built with WPF/.NET 10 so Windows Ink stylus input is handled natively.
+A Windows desktop teaching board designed for a laptop + graphics pen tablet, with an immersive full-screen lecture interface, dark studio chrome and compact bottom toolbars. Built with WPF/.NET 10 so Windows Ink stylus input is handled natively.
 
 ## Current MVP features
 - Pen input through WPF InkCanvas (stylus/tablet pressure is respected when the driver exposes it)
