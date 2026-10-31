@@ -44,6 +44,11 @@ public partial class MainWindow : Window
     private bool _laserMode;
     private bool _laserDrawing;
     private StylusPointCollection? _laserPoints;
+    private bool _presentationMode;
+    private Color _laserColor = Colors.Red;
+    private double _laserDurationSeconds = 10;
+    private Point _cameraDragStart;
+    private double _cameraOffsetX, _cameraOffsetY;
 
     public MainWindow()
     {
@@ -82,6 +87,52 @@ public partial class MainWindow : Window
     {
         RemoveLaserStrokes();
         return new StrokeCollection(Board.Strokes);
+    }
+
+    private void StartLecture_Click(object sender, RoutedEventArgs e) { LectureStartOverlay.Visibility = Visibility.Collapsed; Title = $"AMAN EDGE SMARTBOARD — {LectureTitleInput.Text}"; }
+
+    private void Presentation_Click(object sender, RoutedEventArgs e)
+    {
+        _presentationMode = !_presentationMode;
+        TopBar.Visibility = _presentationMode ? Visibility.Collapsed : Visibility.Visible;
+        PageSidebar.Visibility = _presentationMode ? Visibility.Collapsed : Visibility.Visible;
+        BottomToolbar.Visibility = _presentationMode ? Visibility.Collapsed : Visibility.Visible;
+        PresentationExitButton.Visibility = _presentationMode ? Visibility.Visible : Visibility.Collapsed;
+        WindowStyle = _presentationMode ? WindowStyle.None : WindowStyle.SingleBorderWindow;
+        WindowState = WindowState.Maximized;
+    }
+
+    private void RadialTools_Click(object sender, RoutedEventArgs e) => RadialToolsPanel.Visibility = RadialToolsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+
+    private void CameraFrame_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is System.Windows.Controls.Primitives.Thumb) return;
+        _cameraDragStart = e.GetPosition(WorkspaceGrid);
+        CameraFrame.CaptureMouse();
+        MouseMove += CameraFrame_DragMove;
+        MouseLeftButtonUp += CameraFrame_DragEnd;
+    }
+    private void CameraFrame_DragMove(object sender, MouseEventArgs e)
+    {
+        if (!CameraFrame.IsMouseCaptured) return;
+        var p = e.GetPosition(WorkspaceGrid);
+        _cameraOffsetX += p.X - _cameraDragStart.X; _cameraOffsetY += p.Y - _cameraDragStart.Y;
+        CameraFrame.Margin = new Thickness(Math.Max(0, 18 - _cameraOffsetX), Math.Max(0, 18 + _cameraOffsetY), Math.Max(0, 18 + _cameraOffsetX), Math.Max(0, 18 - _cameraOffsetY));
+        _cameraDragStart = p;
+    }
+    private void CameraFrame_DragEnd(object sender, MouseButtonEventArgs e) { CameraFrame.ReleaseMouseCapture(); MouseMove -= CameraFrame_DragMove; MouseLeftButtonUp -= CameraFrame_DragEnd; }
+    private void CameraResize_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e) { CameraFrame.Width = Math.Clamp(CameraFrame.Width + e.HorizontalChange, 150, 600); CameraFrame.Height = Math.Clamp(CameraFrame.Height + e.VerticalChange, 100, 420); }
+
+    private void LaserSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window { Title = "Laser pointer settings", Width = 340, Height = 230, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = new SolidColorBrush(Color.FromRgb(17, 27, 41)), ResizeMode = ResizeMode.NoResize };
+        var panel = new StackPanel { Margin = new Thickness(18) };
+        panel.Children.Add(new TextBlock { Text = "Laser colour", Foreground = Brushes.White, Margin = new Thickness(0,0,0,6) });
+        var colors = new ComboBox { ItemsSource = new[] { "Red", "Green", "Blue", "Yellow", "White" }, SelectedItem = _laserColor == Colors.Lime ? "Green" : _laserColor == Colors.DodgerBlue ? "Blue" : _laserColor == Colors.Gold ? "Yellow" : _laserColor == Colors.White ? "White" : "Red", Padding = new Thickness(6) }; panel.Children.Add(colors);
+        panel.Children.Add(new TextBlock { Text = "Fade duration (seconds)", Foreground = Brushes.White, Margin = new Thickness(0,14,0,5) });
+        var duration = new Slider { Minimum = 2, Maximum = 30, Value = _laserDurationSeconds, TickFrequency = 1, IsSnapToTickEnabled = true }; panel.Children.Add(duration);
+        var label = new TextBlock { Text = $"{duration.Value:0} seconds", Foreground = Brushes.White }; duration.ValueChanged += (_, _) => label.Text = $"{duration.Value:0} seconds"; panel.Children.Add(label);
+        var save = new Button { Content = "Apply", Margin = new Thickness(0,14,0,0), Padding = new Thickness(10) }; save.Click += (_, _) => { _laserColor = colors.SelectedItem?.ToString() switch { "Green" => Colors.Lime, "Blue" => Colors.DodgerBlue, "Yellow" => Colors.Gold, "White" => Colors.White, _ => Colors.Red }; _laserDurationSeconds = duration.Value; dialog.DialogResult = true; }; panel.Children.Add(save); dialog.Content = panel; dialog.ShowDialog();
     }
 
     private void LaserToggle_Click(object sender, RoutedEventArgs e)
@@ -332,8 +383,8 @@ public partial class MainWindow : Window
             var points = _laserPoints; _laserPoints = null; _laserDrawing = false; Board.ReleaseMouseCapture();
             if (points.Count > 1)
             {
-                var laser = new Stroke(points, new DrawingAttributes { Color = Colors.Red, Width = 5, Height = 5, FitToCurve = true, IgnorePressure = true });
-                Board.Strokes.Add(laser); _laserStrokes[laser] = DateTime.UtcNow.AddSeconds(10);
+                var laser = new Stroke(points, new DrawingAttributes { Color = _laserColor, Width = 5, Height = 5, FitToCurve = true, IgnorePressure = true });
+                Board.Strokes.Add(laser); _laserStrokes[laser] = DateTime.UtcNow.AddSeconds(_laserDurationSeconds);
             }
             e.Handled = true; return;
         }
@@ -356,7 +407,8 @@ public partial class MainWindow : Window
     {
         if(System.Windows.Input.Keyboard.Modifiers==System.Windows.Input.ModifierKeys.Control&&e.Key==System.Windows.Input.Key.Z){Undo_Click(this,new RoutedEventArgs());e.Handled=true;}
         else if(System.Windows.Input.Keyboard.Modifiers==System.Windows.Input.ModifierKeys.Control&&e.Key==System.Windows.Input.Key.Y){Redo_Click(this,new RoutedEventArgs());e.Handled=true;}
-        else if(e.Key==System.Windows.Input.Key.Escape){_shapeTool="Pen";Board.EditingMode=InkCanvasEditingMode.Ink;SetPen();}
+        else if(e.Key==System.Windows.Input.Key.F5){Presentation_Click(this,new RoutedEventArgs());e.Handled=true;}
+        else if(e.Key==System.Windows.Input.Key.Escape){if(_presentationMode){Presentation_Click(this,new RoutedEventArgs());}else{_shapeTool="Pen";Board.EditingMode=InkCanvasEditingMode.Ink;SetPen();}}
     }
     private void Highlighter_Click(object sender, RoutedEventArgs e)
     {
@@ -376,7 +428,7 @@ public partial class MainWindow : Window
     {
         if (Board == null) return;
         string mode = (BackgroundBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Plain";
-        Brush brush = Brushes.White;
+        Brush brush = mode == "Blackboard" ? new SolidColorBrush(Color.FromRgb(28, 48, 43)) : mode == "Cream" ? new SolidColorBrush(Color.FromRgb(250, 244, 225)) : Brushes.White;
         if (mode == "Grid" || mode == "Ruled" || mode == "Dots")
         {
             var drawing = new DrawingGroup();
