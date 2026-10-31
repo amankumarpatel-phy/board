@@ -30,6 +30,9 @@ public partial class MainWindow : Window
     private int _pdfPageCount;
     private string? _pdfFileName;
     private int _textObjectCount;
+    private readonly Dictionary<int, StrokeCollection> _pdfAnnotations = new();
+    private readonly Dictionary<int, List<BoardElement>> _pdfPageElements = new();
+    private bool _changingPdfPage;
 
     public MainWindow()
     {
@@ -77,8 +80,10 @@ public partial class MainWindow : Window
             _pdfBytes = File.ReadAllBytes(dialog.FileName);
             _pdfFileName = Path.GetFileName(dialog.FileName);
             _pdfPageIndex = 0;
+            _pdfAnnotations.Clear(); _pdfPageElements.Clear();
             using var reader = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5));
             _pdfPageCount = reader.GetPageCount();
+            BuildPdfThumbnails();
             RenderPdfPage();
         }
         catch (Exception ex)
@@ -95,6 +100,7 @@ public partial class MainWindow : Window
         if (_pdfBytes == null) return;
         int next = Math.Clamp(_pdfPageIndex + delta, 0, _pdfPageCount - 1);
         if (next == _pdfPageIndex) return;
+        StoreCurrentPdfPage();
         _pdfPageIndex = next;
         RenderPdfPage();
     }
@@ -109,7 +115,40 @@ public partial class MainWindow : Window
         var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
         bitmap.Freeze();
         Board.Background = new ImageBrush(bitmap) { Stretch = Stretch.Uniform, AlignmentX = AlignmentX.Center, AlignmentY = AlignmentY.Center };
+        Board.Strokes = _pdfAnnotations.TryGetValue(_pdfPageIndex, out var pageInk) ? new StrokeCollection(pageInk) : new StrokeCollection();
+        RestoreElements(_pdfPageElements.TryGetValue(_pdfPageIndex, out var pageElements) ? pageElements : new List<BoardElement>());
+        _pages[_pageIndex] = Board.Strokes;
+        _changingPdfPage = true; PdfThumbnails.SelectedIndex = _pdfPageIndex; _changingPdfPage = false;
         PdfPageLabel.Text = $"PDF: {_pdfPageIndex + 1} / {_pdfPageCount}";
+    }
+
+    private void BuildPdfThumbnails()
+    {
+        PdfThumbnails.Items.Clear();
+        if (_pdfBytes == null) return;
+        using var reader = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(0.32));
+        for (int i = 0; i < reader.GetPageCount(); i++)
+        {
+            using var page = reader.GetPageReader(i);
+            var bmp = BitmapSource.Create(page.GetPageWidth(), page.GetPageHeight(), 96, 96, PixelFormats.Bgra32, null, page.GetImage(), page.GetPageWidth() * 4);
+            bmp.Freeze();
+            PdfThumbnails.Items.Add(bmp);
+        }
+    }
+
+    private void StoreCurrentPdfPage()
+    {
+        if (_pdfBytes == null) return;
+        _pdfAnnotations[_pdfPageIndex] = new StrokeCollection(Board.Strokes);
+        _pdfPageElements[_pdfPageIndex] = CaptureElements();
+    }
+
+    private void PdfThumbnail_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_changingPdfPage || PdfThumbnails.SelectedIndex < 0 || _pdfBytes == null) return;
+        StoreCurrentPdfPage();
+        _pdfPageIndex = PdfThumbnails.SelectedIndex;
+        RenderPdfPage();
     }
 
     private void AddText_Click(object sender, RoutedEventArgs e)
@@ -123,7 +162,7 @@ public partial class MainWindow : Window
         DockPanel.SetDock(add, Dock.Bottom); panel.Children.Add(add); dialog.Content = panel;
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(input.Text)) return;
         SaveUndo();
-        var box = new TextBox { Text = input.Text, FontSize = 24, FontFamily = new System.Windows.Media.FontFamily("Segoe UI"), Foreground = SelectedColor(), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(1), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinWidth = 180, MinHeight = 45, Padding = new Thickness(5), Tag = "AEB_TEXT" };
+        var box = new TextBox { Text = input.Text, FontSize = 24, FontFamily = new System.Windows.Media.FontFamily("Segoe UI"), Foreground = new SolidColorBrush(SelectedColor()), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(1), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinWidth = 180, MinHeight = 45, Padding = new Thickness(5), Tag = "AEB_TEXT" };
         InkCanvas.SetLeft(box, 80 + (_textObjectCount % 8) * 24); InkCanvas.SetTop(box, 70 + (_textObjectCount % 8) * 24); _textObjectCount++;
         Board.Children.Add(box);
     }
@@ -285,15 +324,17 @@ public partial class MainWindow : Window
     private void New_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show("Start a new board? Unsaved changes will be lost.", "New board", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _pages.Clear(); _pages.Add(new StrokeCollection()); _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = ""; UpdatePageLabel();
+        _pages.Clear(); _pages.Add(new StrokeCollection()); _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = ""; _pdfBytes = null; _pdfPageCount = 0; _pdfAnnotations.Clear(); _pdfPageElements.Clear(); PdfThumbnails.Items.Clear(); PdfPageLabel.Text = "No PDF"; Board.Children.Clear(); UpdatePageLabel();
     }
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Aman Edge Board (*.aeb)|*.aeb", DefaultExt = ".aeb", FileName = string.IsNullOrWhiteSpace(_currentFile) ? "Lesson.aeb" : Path.GetFileName(_currentFile) };
         if (dialog.ShowDialog() != true) return;
         _pages[_pageIndex] = Board.Strokes;
+        if (_pdfBytes != null) StoreCurrentPdfPage();
         var data = _pages.Select(p => { using var ms = new MemoryStream(); p.Save(ms); return Convert.ToBase64String(ms.ToArray()); }).ToArray();
-        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 2, Pages = data, PdfBytes = _pdfBytes == null ? null : Convert.ToBase64String(_pdfBytes), PdfPageIndex = _pdfPageIndex, PdfFileName = _pdfFileName, Elements = CaptureElements() }));
+        var annotationData = _pdfAnnotations.ToDictionary(k => k.Key, v => { using var ms = new MemoryStream(); v.Value.Save(ms); return Convert.ToBase64String(ms.ToArray()); });
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 4, Pages = data, PdfBytes = _pdfBytes == null ? null : Convert.ToBase64String(_pdfBytes), PdfPageIndex = _pdfPageIndex, PdfFileName = _pdfFileName, Elements = CaptureElements(), PdfAnnotations = annotationData, PdfPageElements = _pdfPageElements }));
         _currentFile = dialog.FileName; MessageBox.Show("Board saved successfully.", "AMAN EDGE SMARTBOARD", MessageBoxButton.OK, MessageBoxImage.Information);
     }
     private void Open_Click(object sender, RoutedEventArgs e)
@@ -309,7 +350,10 @@ public partial class MainWindow : Window
             _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = dialog.FileName; UpdatePageLabel(); RestoreElements(doc.Elements);
             _pdfBytes = string.IsNullOrEmpty(doc.PdfBytes) ? null : Convert.FromBase64String(doc.PdfBytes);
             _pdfFileName = doc.PdfFileName; _pdfPageIndex = doc.PdfPageIndex;
-            if (_pdfBytes != null) { using var pdf = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5)); _pdfPageCount = pdf.GetPageCount(); _pdfPageIndex = Math.Clamp(_pdfPageIndex, 0, Math.Max(0, _pdfPageCount - 1)); RenderPdfPage(); }
+            _pdfAnnotations.Clear(); _pdfPageElements.Clear();
+            if (doc.PdfAnnotations != null) foreach (var entry in doc.PdfAnnotations) { using var ms = new MemoryStream(Convert.FromBase64String(entry.Value)); _pdfAnnotations[entry.Key] = new StrokeCollection(ms); }
+            if (doc.PdfPageElements != null) foreach (var entry in doc.PdfPageElements) _pdfPageElements[entry.Key] = entry.Value;
+            if (_pdfBytes != null) { using var pdf = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5)); _pdfPageCount = pdf.GetPageCount(); _pdfPageIndex = Math.Clamp(_pdfPageIndex, 0, Math.Max(0, _pdfPageCount - 1)); BuildPdfThumbnails(); RenderPdfPage(); }
             else { _pdfPageCount = 0; PdfPageLabel.Text = "No PDF"; Board.Background = Brushes.White; ApplyBackground(); }
         }
         catch (Exception ex) { MessageBox.Show($"Could not open file: {ex.Message}", "Open error", MessageBoxButton.OK, MessageBoxImage.Error); }
@@ -325,6 +369,6 @@ public partial class MainWindow : Window
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(dialog.FileName); encoder.Save(stream);
     }
-    private sealed class BoardDocument { public int Version { get; set; } = 3; public string[] Pages { get; set; } = Array.Empty<string>(); public string? PdfBytes { get; set; } public int PdfPageIndex { get; set; } public string? PdfFileName { get; set; } public List<BoardElement>? Elements { get; set; } }
+    private sealed class BoardDocument { public int Version { get; set; } = 4; public string[] Pages { get; set; } = Array.Empty<string>(); public string? PdfBytes { get; set; } public int PdfPageIndex { get; set; } public string? PdfFileName { get; set; } public List<BoardElement>? Elements { get; set; } public Dictionary<int,string>? PdfAnnotations { get; set; } public Dictionary<int,List<BoardElement>>? PdfPageElements { get; set; } }
     private sealed class BoardElement { public string Type { get; set; } = ""; public string Content { get; set; } = ""; public double X { get; set; } public double Y { get; set; } public double Width { get; set; } public double Height { get; set; } public double FontSize { get; set; } = 24; }
 }
