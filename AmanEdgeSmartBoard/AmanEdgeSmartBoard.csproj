@@ -9,4 +9,7 @@
     <RootNamespace>AmanEdgeSmartBoard</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+  </ItemGroup>
 </Project>
