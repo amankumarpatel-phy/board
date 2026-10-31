@@ -22,6 +22,12 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet, wi
 - Save the source PDF inside the `.aeb` lesson file so the lesson remains portable
 - Live webcam picture-in-picture preview with camera on/off control (OpenCvSharp; default camera device)
 - Temporary red laser-pointer strokes that automatically disappear after 10 seconds and are excluded from lesson saves and PNG exports
+- Lecture title/start screen for launching a teaching session
+- Teacher Mode full-screen presentation (F5 to enter, Esc to exit)
+- Compact floating quick-tools palette
+- Movable and resizable webcam picture-in-picture window
+- Configurable laser pointer colour and fade duration (2–30 seconds)
+- Blackboard and cream board backgrounds in addition to plain, grid, ruled and dotted styles
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
