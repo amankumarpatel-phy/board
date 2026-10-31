@@ -14,7 +14,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet. Bu
 - Keyboard shortcuts: Ctrl+Z undo, Ctrl+Y redo, Esc return to pen
 - Zoom controls (50%–250%) with scrollable canvas navigation
 - Mouse-wheel/scrollbar navigation through the zoomed board
-- Open PDF files and navigate page-by-page
+- Open PDF files and navigate page-by-page with rendered page thumbnails
+- Keep handwriting and inserted objects independently for every PDF page in the lesson project
 - Insert editable text boxes and image objects onto the board
 - Save and restore inserted text and images in `.aeb` lesson files
 - Render PDF pages as the board background while keeping pen annotations editable
@@ -37,4 +38,4 @@ A Windows x64 build is also produced automatically by GitHub Actions on each pus
 Connect the tablet, install its Windows driver, and set Windows pen/stylus mode if the manufacturer offers that option. The board uses WPF stylus events and pressure-aware ink attributes; pressure support depends on the tablet driver.
 
 ## Roadmap
-PDF/PPT import and annotation, LaTeX equations, graphing, physics visualizers, screen capture/recording, autosave and richer object tools are planned for subsequent releases.
+PowerPoint import, annotated PDF export, LaTeX equations, graphing, physics visualizers, screen capture/recording, autosave and richer object tools are planned for subsequent releases.
