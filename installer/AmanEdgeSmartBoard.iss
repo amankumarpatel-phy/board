@@ -13,7 +13,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\AMAN EDGE\SMARTBOARD
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-OutputDir=installer-output
+OutputDir=..\installer-output
 OutputBaseFilename=AMAN-EDGE-SMARTBOARD-Setup-{#AppVersion}-x64
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64
@@ -33,7 +33,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\AMAN EDGE SMARTBOARD"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
