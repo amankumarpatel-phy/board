@@ -25,7 +25,7 @@
     </StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
      <Button Content="New" Click="New_Click"/><Button Content="Open Lesson" Click="Open_Click"/><Button Content="Save Lesson" Click="Save_Click"/>
-     <Button Content="Open PDF" Click="OpenPdf_Click"/><Button Content="Add Text" Click="AddText_Click"/><Button Content="Add Image" Click="AddImage_Click"/>
+     <Button Content="Open PDF" Click="OpenPdf_Click"/><Button Content="Equation" Click="EquationEditor_Click"/><Button Content="2D Plot" Click="Plotter_Click"/><Button Content="Add Text" Click="AddText_Click"/><Button Content="Add Image" Click="AddImage_Click"/>
      <Button Content="Export PNG" Click="Export_Click"/><Button Content="Teacher Mode (F5)" Click="Presentation_Click"/>
     </StackPanel>
    </DockPanel>
