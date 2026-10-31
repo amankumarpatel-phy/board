@@ -324,7 +324,7 @@ public partial class MainWindow : Window
     private void New_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show("Start a new board? Unsaved changes will be lost.", "New board", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _pages.Clear(); _pages.Add(new StrokeCollection()); _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = ""; _pdfBytes = null; _pdfPageCount = 0; _pdfAnnotations.Clear(); _pdfPageElements.Clear(); PdfThumbnails.Items.Clear(); PdfPageLabel.Text = "No PDF"; Board.Children.Clear(); UpdatePageLabel();
+        _pages.Clear(); _pages.Add(new StrokeCollection()); _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = ""; _pdfBytes = null; _pdfPageCount = 0; _pdfAnnotations.Clear(); _pdfPageElements.Clear(); PdfThumbnails.Items.Clear(); PdfPageLabel.Text = "No PDF"; Board.Children.Clear(); Board.Background = Brushes.White; ApplyBackground(); UpdatePageLabel();
     }
     private void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -354,7 +354,7 @@ public partial class MainWindow : Window
             if (doc.PdfAnnotations != null) foreach (var entry in doc.PdfAnnotations) { using var ms = new MemoryStream(Convert.FromBase64String(entry.Value)); _pdfAnnotations[entry.Key] = new StrokeCollection(ms); }
             if (doc.PdfPageElements != null) foreach (var entry in doc.PdfPageElements) _pdfPageElements[entry.Key] = entry.Value;
             if (_pdfBytes != null) { using var pdf = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5)); _pdfPageCount = pdf.GetPageCount(); _pdfPageIndex = Math.Clamp(_pdfPageIndex, 0, Math.Max(0, _pdfPageCount - 1)); BuildPdfThumbnails(); RenderPdfPage(); }
-            else { _pdfPageCount = 0; PdfPageLabel.Text = "No PDF"; Board.Background = Brushes.White; ApplyBackground(); }
+            else { _pdfPageCount = 0; _pdfAnnotations.Clear(); _pdfPageElements.Clear(); PdfThumbnails.Items.Clear(); PdfPageLabel.Text = "No PDF"; Board.Background = Brushes.White; ApplyBackground(); }
         }
         catch (Exception ex) { MessageBox.Show($"Could not open file: {ex.Message}", "Open error", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
