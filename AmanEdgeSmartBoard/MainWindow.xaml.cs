@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private int _pdfPageIndex;
     private int _pdfPageCount;
     private string? _pdfFileName;
+    private int _textObjectCount;
 
     public MainWindow()
     {
@@ -109,6 +110,70 @@ public partial class MainWindow : Window
         bitmap.Freeze();
         Board.Background = new ImageBrush(bitmap) { Stretch = Stretch.Uniform, AlignmentX = AlignmentX.Center, AlignmentY = AlignmentY.Center };
         PdfPageLabel.Text = $"PDF: {_pdfPageIndex + 1} / {_pdfPageCount}";
+    }
+
+    private void AddText_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window { Title = "Insert text", Width = 420, Height = 260, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, Background = Brushes.White, ResizeMode = ResizeMode.NoResize };
+        var panel = new DockPanel { Margin = new Thickness(12) };
+        var input = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontSize = 20, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Text = "Type your lesson text here..." };
+        DockPanel.SetDock(input, Dock.Top); panel.Children.Add(input);
+        var add = new Button { Content = "Insert on board", IsDefault = true, Margin = new Thickness(0, 10, 0, 0), Padding = new Thickness(12, 8, 12, 8) };
+        add.Click += (_, _) => { dialog.DialogResult = true; dialog.Close(); };
+        DockPanel.SetDock(add, Dock.Bottom); panel.Children.Add(add); dialog.Content = panel;
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(input.Text)) return;
+        SaveUndo();
+        var box = new TextBox { Text = input.Text, FontSize = 24, FontFamily = new System.Windows.Media.FontFamily("Segoe UI"), Foreground = SelectedColor(), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(1), TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinWidth = 180, MinHeight = 45, Padding = new Thickness(5), Tag = "AEB_TEXT" };
+        InkCanvas.SetLeft(box, 80 + (_textObjectCount % 8) * 24); InkCanvas.SetTop(box, 70 + (_textObjectCount % 8) * 24); _textObjectCount++;
+        Board.Children.Add(box);
+    }
+
+    private void AddImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif" };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.UriSource = new Uri(dialog.FileName); bitmap.DecodePixelWidth = 900; bitmap.EndInit(); bitmap.Freeze();
+            SaveUndo();
+            var image = new System.Windows.Controls.Image { Source = bitmap, Width = Math.Min(bitmap.Width, 520), Height = Math.Min(bitmap.Height, 360), Stretch = Stretch.Uniform, Tag = "AEB_IMAGE" };
+            InkCanvas.SetLeft(image, 100); InkCanvas.SetTop(image, 100); Board.Children.Add(image);
+        }
+        catch (Exception ex) { MessageBox.Show($"Unable to insert image: {ex.Message}", "Image error", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private List<BoardElement> CaptureElements()
+    {
+        var elements = new List<BoardElement>();
+        foreach (UIElement child in Board.Children)
+        {
+            double left = InkCanvas.GetLeft(child), top = InkCanvas.GetTop(child);
+            if (child is TextBox text && Equals(text.Tag, "AEB_TEXT"))
+                elements.Add(new BoardElement { Type = "text", Content = text.Text, X = double.IsNaN(left) ? 0 : left, Y = double.IsNaN(top) ? 0 : top, Width = text.Width, Height = text.Height, FontSize = text.FontSize });
+            else if (child is System.Windows.Controls.Image image && Equals(image.Tag, "AEB_IMAGE") && image.Source is BitmapSource source)
+            {
+                var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var ms = new MemoryStream(); encoder.Save(ms);
+                elements.Add(new BoardElement { Type = "image", Content = Convert.ToBase64String(ms.ToArray()), X = double.IsNaN(left) ? 0 : left, Y = double.IsNaN(top) ? 0 : top, Width = image.Width, Height = image.Height });
+            }
+        }
+        return elements;
+    }
+
+    private void RestoreElements(List<BoardElement>? elements)
+    {
+        Board.Children.Clear();
+        if (elements == null) return;
+        foreach (var item in elements)
+        {
+            UIElement? child = null;
+            if (item.Type == "text") child = new TextBox { Text = item.Content, FontSize = item.FontSize <= 0 ? 24 : item.FontSize, Width = item.Width, Height = item.Height, Foreground = SelectedColor(), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, Padding = new Thickness(5), Tag = "AEB_TEXT" };
+            else if (item.Type == "image")
+            {
+                var bytes = Convert.FromBase64String(item.Content); var bitmap = new BitmapImage(); using var ms = new MemoryStream(bytes); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = ms; bitmap.EndInit(); bitmap.Freeze();
+                child = new System.Windows.Controls.Image { Source = bitmap, Width = item.Width, Height = item.Height, Stretch = Stretch.Uniform, Tag = "AEB_IMAGE" };
+            }
+            if (child != null) { InkCanvas.SetLeft(child, item.X); InkCanvas.SetTop(child, item.Y); Board.Children.Add(child); }
+        }
     }
 
     private void Zoom_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -228,7 +293,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true) return;
         _pages[_pageIndex] = Board.Strokes;
         var data = _pages.Select(p => { using var ms = new MemoryStream(); p.Save(ms); return Convert.ToBase64String(ms.ToArray()); }).ToArray();
-        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 2, Pages = data, PdfBytes = _pdfBytes == null ? null : Convert.ToBase64String(_pdfBytes), PdfPageIndex = _pdfPageIndex, PdfFileName = _pdfFileName }));
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(new BoardDocument { Version = 2, Pages = data, PdfBytes = _pdfBytes == null ? null : Convert.ToBase64String(_pdfBytes), PdfPageIndex = _pdfPageIndex, PdfFileName = _pdfFileName, Elements = CaptureElements() }));
         _currentFile = dialog.FileName; MessageBox.Show("Board saved successfully.", "AMAN EDGE SMARTBOARD", MessageBoxButton.OK, MessageBoxImage.Information);
     }
     private void Open_Click(object sender, RoutedEventArgs e)
@@ -241,7 +306,7 @@ public partial class MainWindow : Window
             _pages.Clear();
             foreach (var encoded in doc.Pages) { using var ms = new MemoryStream(Convert.FromBase64String(encoded)); _pages.Add(new StrokeCollection(ms)); }
             if (_pages.Count == 0) _pages.Add(new StrokeCollection());
-            _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = dialog.FileName; UpdatePageLabel();
+            _pageIndex = 0; Board.Strokes = _pages[0]; _undo.Clear(); _redo.Clear(); _currentFile = dialog.FileName; UpdatePageLabel(); RestoreElements(doc.Elements);
             _pdfBytes = string.IsNullOrEmpty(doc.PdfBytes) ? null : Convert.FromBase64String(doc.PdfBytes);
             _pdfFileName = doc.PdfFileName; _pdfPageIndex = doc.PdfPageIndex;
             if (_pdfBytes != null) { using var pdf = DocLib.Instance.GetDocReader(_pdfBytes, new PageDimensions(1.5)); _pdfPageCount = pdf.GetPageCount(); _pdfPageIndex = Math.Clamp(_pdfPageIndex, 0, Math.Max(0, _pdfPageCount - 1)); RenderPdfPage(); }
@@ -260,5 +325,6 @@ public partial class MainWindow : Window
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(dialog.FileName); encoder.Save(stream);
     }
-    private sealed class BoardDocument { public int Version { get; set; } = 2; public string[] Pages { get; set; } = Array.Empty<string>(); public string? PdfBytes { get; set; } public int PdfPageIndex { get; set; } public string? PdfFileName { get; set; } }
+    private sealed class BoardDocument { public int Version { get; set; } = 3; public string[] Pages { get; set; } = Array.Empty<string>(); public string? PdfBytes { get; set; } public int PdfPageIndex { get; set; } public string? PdfFileName { get; set; } public List<BoardElement>? Elements { get; set; } }
+    private sealed class BoardElement { public string Type { get; set; } = ""; public string Content { get; set; } = ""; public double X { get; set; } public double Y { get; set; } public double Width { get; set; } public double Height { get; set; } public double FontSize { get; set; } = 24; }
 }
