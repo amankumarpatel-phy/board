@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Ink;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -28,7 +29,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _pages.Add(new StrokeCollection());
         Board.Strokes = _pages[0];
-        Board.RenderTransform = _boardScale;
+        Board.LayoutTransform = _boardScale;
         Board.Strokes.StrokesChanged += (_, _) => { };
         ApplyBackground();
         SetPen();
