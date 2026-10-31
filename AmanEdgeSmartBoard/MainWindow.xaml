@@ -15,7 +15,7 @@
       <WrapPanel VerticalAlignment="Center">
         <Button Content="✒ Pen" Click="Pen_Click"/><Button Content="Line" Click="Line_Click"/><Button Content="Rectangle" Click="Rectangle_Click"/><Button Content="Ellipse" Click="Ellipse_Click"/><Button Content="Arrow" Click="Arrow_Click"/><Button Content="Highlighter" Click="Highlighter_Click"/><Button Content="Select" Click="Select_Click"/><Button Content="Stroke Eraser" Click="StrokeEraser_Click"/><Button Content="Point Eraser" Click="PointEraser_Click"/>
         <TextBlock Text="  Colour" Foreground="White" VerticalAlignment="Center" Margin="12,0,3,0"/>
-        <ComboBox x:Name="ColourBox" Width="105" SelectedIndex="0" SelectionChanged="Colour_Changed" Margin="3"><ComboBoxItem Content="White"/><ComboBoxItem Content="Black"/><ComboBoxItem Content="Red"/><ComboBoxItem Content="Blue"/><ComboBoxItem Content="Green"/><ComboBoxItem Content="Yellow"/></ComboBox>
+        <ComboBox x:Name="ColourBox" Width="105" SelectedIndex="1" SelectionChanged="Colour_Changed" Margin="3"><ComboBoxItem Content="White"/><ComboBoxItem Content="Black"/><ComboBoxItem Content="Red"/><ComboBoxItem Content="Blue"/><ComboBoxItem Content="Green"/><ComboBoxItem Content="Yellow"/></ComboBox>
         <TextBlock Text="Thickness" Foreground="White" VerticalAlignment="Center" Margin="12,0,3,0"/>
         <Slider x:Name="WidthSlider" Width="110" Minimum="1" Maximum="18" Value="3" ValueChanged="Width_Changed" VerticalAlignment="Center"/>
         <TextBlock x:Name="WidthLabel" Text="3 px" Foreground="White" VerticalAlignment="Center" Margin="4,0"/>
