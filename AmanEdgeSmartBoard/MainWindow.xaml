@@ -16,7 +16,7 @@
  </Window.Resources>
  <Grid>
   <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Border Grid.Row="0" Background="#101927" BorderBrush="#25344A" BorderThickness="0,0,0,1">
+  <Border x:Name="TopBar" Grid.Row="0" Background="#101927" BorderBrush="#25344A" BorderThickness="0,0,0,1">
    <DockPanel Margin="18,0">
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" DockPanel.Dock="Left">
      <TextBlock Text="AMAN EDGE" FontSize="17" FontWeight="Bold" Foreground="#F8FAFC"/>
@@ -26,13 +26,13 @@
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
      <Button Content="New" Click="New_Click"/><Button Content="Open Lesson" Click="Open_Click"/><Button Content="Save Lesson" Click="Save_Click"/>
      <Button Content="Open PDF" Click="OpenPdf_Click"/><Button Content="Add Text" Click="AddText_Click"/><Button Content="Add Image" Click="AddImage_Click"/>
-     <Button Content="Export PNG" Click="Export_Click"/>
+     <Button Content="Export PNG" Click="Export_Click"/><Button Content="Teacher Mode (F5)" Click="Presentation_Click"/>
     </StackPanel>
    </DockPanel>
   </Border>
-  <Grid Grid.Row="1" Margin="16,14,16,10">
+  <Grid x:Name="WorkspaceGrid" Grid.Row="1" Margin="16,14,16,10">
    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-   <Border Grid.Column="0" Width="174" Background="#111B29" CornerRadius="10" Padding="8" Margin="0,0,12,0">
+   <Border x:Name="PageSidebar" Grid.Column="0" Width="174" Background="#111B29" CornerRadius="10" Padding="8" Margin="0,0,12,0">
     <DockPanel>
      <StackPanel DockPanel.Dock="Top">
       <TextBlock Text="LECTURE PAGES" FontSize="11" FontWeight="Bold" Foreground="#E5B94D" Margin="5,6,5,10"/>
@@ -57,19 +57,19 @@
       <InkCanvas x:Name="Board" Background="White" EditingMode="Ink" UseLayoutRounding="True" RenderTransformOrigin="0,0"/>
      </ScrollViewer>
      <Border x:Name="CameraFrame" Width="260" Height="180" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="18"
-      Background="#101927" BorderBrush="#D8B34D" BorderThickness="2" CornerRadius="9" Visibility="Collapsed" IsHitTestVisible="False">
-      <Grid><Image x:Name="CameraPreview" Stretch="Uniform"/><Border Background="#B3000000" VerticalAlignment="Bottom" Padding="7"><TextBlock Text="● LIVE CAMERA" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold"/></Border></Grid>
+      Background="#101927" BorderBrush="#D8B34D" BorderThickness="2" CornerRadius="9" Visibility="Collapsed" MouseLeftButtonDown="CameraFrame_MouseLeftButtonDown">
+      <Grid><Image x:Name="CameraPreview" Stretch="Uniform"/><primitives:Thumb xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework" Width="18" Height="18" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" DragDelta="CameraResize_DragDelta" Background="#D8B34D"/><Border Background="#B3000000" VerticalAlignment="Bottom" Padding="7"><TextBlock Text="● LIVE CAMERA" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold"/></Border></Grid>
      </Border>
-     <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Background="#C9101927" CornerRadius="6" Padding="9" IsHitTestVisible="False">
+     <Button x:Name="PresentationExitButton" Content="Exit Teacher Mode (Esc)" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Visibility="Collapsed" Click="Presentation_Click"/><Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Background="#C9101927" CornerRadius="6" Padding="9" IsHitTestVisible="False">
       <TextBlock Text="TEACHING CANVAS" FontSize="10" FontWeight="Bold" Foreground="#D6B65B"/>
      </Border>
     </Grid>
    </Border>
   </Grid>
-  <Border Grid.Row="2" Background="#0E1724" BorderBrush="#2B3A4F" BorderThickness="0,1,0,0" Padding="10,7">
+  <Border x:Name="BottomToolbar" Grid.Row="2" Background="#0E1724" BorderBrush="#2B3A4F" BorderThickness="0,1,0,0" Padding="10,7">
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="✒ Pen" Click="Pen_Click"/><Button Content="Line" Click="Line_Click"/><Button Content="Rectangle" Click="Rectangle_Click"/><Button Content="Ellipse" Click="Ellipse_Click"/><Button Content="Arrow" Click="Arrow_Click"/>
+     <Button Content="Tools ◉" Click="RadialTools_Click"/><Button Content="✒ Pen" Click="Pen_Click"/><Button Content="Line" Click="Line_Click"/><Button Content="Rectangle" Click="Rectangle_Click"/><Button Content="Ellipse" Click="Ellipse_Click"/><Button Content="Arrow" Click="Arrow_Click"/>
      <Button Content="Highlighter" Click="Highlighter_Click"/><Button Content="Select" Click="Select_Click"/><Button Content="Stroke Eraser" Click="StrokeEraser_Click"/><Button Content="Point Eraser" Click="PointEraser_Click"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -78,12 +78,14 @@
      <TextBlock Text="SIZE" FontSize="10" Foreground="#8FA1B8" VerticalAlignment="Center"/>
      <Slider x:Name="WidthSlider" Width="85" Minimum="1" Maximum="18" Value="3" ValueChanged="Width_Changed" VerticalAlignment="Center"/>
      <TextBlock x:Name="WidthLabel" Text="3 px" VerticalAlignment="Center" Margin="3,0,8,0"/>
-     <ComboBox x:Name="BackgroundBox" Width="92" SelectedIndex="0" SelectionChanged="Background_Changed"><ComboBoxItem Content="Plain"/><ComboBoxItem Content="Grid"/><ComboBoxItem Content="Ruled"/><ComboBoxItem Content="Dots"/></ComboBox>
+     <ComboBox x:Name="BackgroundBox" Width="104" SelectedIndex="0" SelectionChanged="Background_Changed"><ComboBoxItem Content="Plain"/><ComboBoxItem Content="Grid"/><ComboBoxItem Content="Ruled"/><ComboBoxItem Content="Dots"/><ComboBoxItem Content="Blackboard"/><ComboBoxItem Content="Cream"/></ComboBox>
      <Button Content="Undo" Click="Undo_Click"/><Button Content="Redo" Click="Redo_Click"/><Button Content="Clear" Click="Clear_Click"/>
      <Button Content="Zoom −" Click="ZoomOut_Click"/><Slider x:Name="ZoomSlider" Width="75" Minimum="0.5" Maximum="2.5" Value="1" ValueChanged="Zoom_Changed" VerticalAlignment="Center"/><Button Content="Zoom +" Click="ZoomIn_Click"/><Button Content="100%" Click="ZoomReset_Click"/>
-     <Button Content="Camera On / Off" Click="CameraToggle_Click" Background="#244B58"/><Button Content="Laser 10s" Click="LaserToggle_Click" Background="#743B42"/>
+     <Button Content="Camera On / Off" Click="CameraToggle_Click" Background="#244B58"/><Button Content="Laser Settings" Click="LaserSettings_Click" Background="#743B42"/><Button Content="Laser 10s" Click="LaserToggle_Click" Background="#743B42"/>
     </StackPanel>
    </DockPanel>
   </Border>
+ <Border x:Name="RadialToolsPanel" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="18,0,0,18" Background="#EE101927" BorderBrush="#D8B34D" BorderThickness="1" CornerRadius="18" Padding="12" Visibility="Collapsed"><StackPanel Orientation="Horizontal"><Button Content="Pen" Click="Pen_Click"/><Button Content="Highlighter" Click="Highlighter_Click"/><Button Content="Laser" Click="LaserToggle_Click"/><Button Content="Eraser" Click="StrokeEraser_Click"/><Button Content="Select" Click="Select_Click"/><Button Content="Shapes" Click="Line_Click"/></StackPanel></Border>
+  <Border x:Name="LectureStartOverlay" Grid.RowSpan="3" Background="#F2080D16" Panel.ZIndex="20"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="520"><TextBlock Text="AMAN EDGE" FontSize="34" FontWeight="Bold" Foreground="#E5B94D" HorizontalAlignment="Center"/><TextBlock Text="SMARTBOARD • LECTURE STUDIO" FontSize="13" Foreground="#C7D2E0" HorizontalAlignment="Center" Margin="0,8,0,28"/><TextBlock Text="LECTURE TITLE" Foreground="#E5B94D" FontSize="11" Margin="0,0,0,6"/><TextBox x:Name="LectureTitleInput" Text="Physics Lecture" FontSize="20" Padding="12" Background="#17253A" Foreground="White" BorderBrush="#52647B"/><Button Content="START TEACHING" Click="StartLecture_Click" Background="#9B762A" Padding="18,13" FontSize="16" Margin="0,18,0,0"/><TextBlock Text="Open a PDF or start with a blank board. Press F5 for presentation mode." Foreground="#9AAABD" FontSize="11" HorizontalAlignment="Center" Margin="0,16,0,0"/></StackPanel></Border>
  </Grid>
 </Window>
