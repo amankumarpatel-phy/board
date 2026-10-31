@@ -23,8 +23,8 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $version = "1.0.\${{ github.run_number }}"
-          $iscc = "\${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = "1.0.$env:GITHUB_RUN_NUMBER"
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           & $iscc "/DAppVersion=$version" "installer\AmanEdgeSmartBoard.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed with exit code $LASTEXITCODE" }
       - name: Generate SHA256 checksum
