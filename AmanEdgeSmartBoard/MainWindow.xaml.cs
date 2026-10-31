@@ -205,7 +205,7 @@ public partial class MainWindow : Window
         foreach (var item in elements)
         {
             UIElement? child = null;
-            if (item.Type == "text") child = new TextBox { Text = item.Content, FontSize = item.FontSize <= 0 ? 24 : item.FontSize, Width = item.Width, Height = item.Height, Foreground = SelectedColor(), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, Padding = new Thickness(5), Tag = "AEB_TEXT" };
+            if (item.Type == "text") child = new TextBox { Text = item.Content, FontSize = item.FontSize <= 0 ? 24 : item.FontSize, Width = item.Width, Height = item.Height, Foreground = new SolidColorBrush(SelectedColor()), Background = Brushes.Transparent, BorderBrush = Brushes.LightGray, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, Padding = new Thickness(5), Tag = "AEB_TEXT" };
             else if (item.Type == "image")
             {
                 var bytes = Convert.FromBase64String(item.Content); var bitmap = new BitmapImage(); using var ms = new MemoryStream(bytes); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = ms; bitmap.EndInit(); bitmap.Freeze();
