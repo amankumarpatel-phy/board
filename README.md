@@ -10,6 +10,8 @@ A Windows desktop teaching board designed for a laptop + graphics pen tablet. Bu
 - Multiple pages
 - Undo/redo, clear page
 - Save/open multi-page lessons in the native `.aeb` format
+- Straight line, rectangle, ellipse and arrow drawing tools
+- Keyboard shortcuts: Ctrl+Z undo, Ctrl+Y redo, Esc return to pen
 - Export the current page to PNG
 - Windows GitHub Actions workflow publishes a self-contained x64 EXE
 
