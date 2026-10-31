@@ -21,7 +21,7 @@
         <TextBlock x:Name="WidthLabel" Text="3 px" Foreground="White" VerticalAlignment="Center" Margin="4,0"/>
         <TextBlock Text="Background" Foreground="White" VerticalAlignment="Center" Margin="12,0,3,0"/>
         <ComboBox x:Name="BackgroundBox" Width="110" SelectedIndex="0" SelectionChanged="Background_Changed" Margin="3"><ComboBoxItem Content="Plain"/><ComboBoxItem Content="Grid"/><ComboBoxItem Content="Ruled"/><ComboBoxItem Content="Dots"/></ComboBox>
-        <Button Content="Undo" Click="Undo_Click"/><Button Content="Redo" Click="Redo_Click"/><Button Content="Clear Page" Click="Clear_Click"/>
+        <Button Content="Undo" Click="Undo_Click"/><Button Content="Redo" Click="Redo_Click"/><Button Content="Clear Page" Click="Clear_Click"/><Button Content="Zoom −" Click="ZoomOut_Click"/><Slider x:Name="ZoomSlider" Width="110" Minimum="0.5" Maximum="2.5" Value="1" ValueChanged="Zoom_Changed" VerticalAlignment="Center"/><Button Content="Zoom +" Click="ZoomIn_Click"/><Button Content="100%" Click="ZoomReset_Click"/>
       </WrapPanel>
     </Border>
     <Border DockPanel.Dock="Bottom" Background="#111D30" Padding="8">
@@ -31,7 +31,9 @@
       </DockPanel>
     </Border>
     <Border Margin="12" CornerRadius="8" Background="#F8FAFC" ClipToBounds="True">
-      <InkCanvas x:Name="Board" Background="White" EditingMode="Ink" UseLayoutRounding="True"/>
+      <ScrollViewer x:Name="BoardScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
+        <InkCanvas x:Name="Board" Background="White" EditingMode="Ink" UseLayoutRounding="True" RenderTransformOrigin="0,0"/>
+      </ScrollViewer>
     </Border>
   </DockPanel>
 </Window>
